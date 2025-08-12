@@ -5,14 +5,14 @@
     <link name="smaller_a">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.2</mass>
+        <mass>0.1</mass>
         <inertia>
-          <ixx>0.00027174218</ixx>
-          <iyy>0.0002002763</iyy>
-          <izz>0.00041868514</izz>
-          <ixy>1.8564733e-07</ixy>
-          <ixz>-3.2254869e-23</ixz>
-          <iyz>-7.5783988e-23</iyz>
+          <ixx>0.00013587109</ixx>
+          <iyy>0.00010013815</iyy>
+          <izz>0.00020934257</izz>
+          <ixy>9.2823665e-08</ixy>
+          <ixz>-1.6127434e-23</ixz>
+          <iyz>-3.7891994e-23</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">
@@ -38,7 +38,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_1">
@@ -64,7 +64,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_2">
@@ -90,7 +90,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_3">
@@ -116,7 +116,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_4">
@@ -142,7 +142,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_5">
@@ -168,7 +168,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_6">
@@ -194,7 +194,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_7">
@@ -220,7 +220,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_8">
@@ -246,7 +246,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
       <visual name="convex_9">
@@ -272,7 +272,7 @@
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.02 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
         </drake:proximity_properties>
       </collision>
     </link>

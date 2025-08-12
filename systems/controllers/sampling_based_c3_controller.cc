@@ -1333,7 +1333,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
-      contact_model_,c3_options.with_z_lambda);
+      contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index]);
     lcs_candidates.push_back(lcs_object_sample);
 
     // Create different LCS objects for cost calculation.
@@ -1347,7 +1347,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,c3_options.with_z_lambda);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index_for_cost]);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -2121,7 +2121,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.with_z_lambda);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index]);
 }
 
 // Output port handlers for best sample location
@@ -2353,7 +2353,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     c3_options.num_friction_directions, verbose_);
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.with_z_lambda);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index]);
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

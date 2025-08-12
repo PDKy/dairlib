@@ -1,6 +1,7 @@
 #include "solvers/lcs_factory.h"
 
 #include <iostream>
+#include <utility>
 
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -34,7 +35,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, ContactModel contact_model,bool with_z_lambda) {
+    int N, ContactModel contact_model,const vector<int> resolve_PlanarContacts_vector) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
 
@@ -42,8 +43,8 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   vector<int> num_direction_contacts_vector;
   int num_planar_contacts = 0;
-  for (auto pair : contact_geoms) {
-    if (IsObjToObjContact(plant,context,pair) && (!with_z_lambda)) {
+  for (int i=0; i<n_contacts; i++) {
+    if (CheckIfPlanarContact(i,resolve_PlanarContacts_vector)) {
       num_planar_contacts++;
       num_direction_contacts_vector.push_back(1);
     }else {
@@ -52,7 +53,7 @@ LCS LCSFactory::LinearizePlantToLCS(
   }
 
 
-  int num_direction_contacts = with_z_lambda? 2 * n_contacts * num_friction_directions : 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+  int num_direction_contacts =  2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
@@ -309,15 +310,16 @@ LCSFactory::ComputeContactJacobian(
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
         contact_geoms,
     int num_friction_directions, const std::vector<double>& mu,
-    dairlib::solvers::ContactModel contact_model, bool with_z_lambda) {
+    dairlib::solvers::ContactModel contact_model, const vector<int> resolve_PlanarContacts_vector) {
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();
 
   vector<int> num_direction_contacts_vector;
   int num_planar_contacts = 0;
-  for (auto pair : contact_geoms) {
-    if (IsObjToObjContact(plant,context,pair) && (!with_z_lambda)) {
+
+  for (int i=0; i<n_contacts; i++) {
+    if (CheckIfPlanarContact(i,resolve_PlanarContacts_vector)) {
       num_planar_contacts++;
       num_direction_contacts_vector.push_back(1);
     }else {
@@ -325,7 +327,7 @@ LCSFactory::ComputeContactJacobian(
     }
   }
 
-  int num_direction_contacts = with_z_lambda? 2 * n_contacts * num_friction_directions : 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
+  int num_direction_contacts = 2*num_friction_directions*(n_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
 
 
   VectorXd phi(n_contacts);
@@ -338,28 +340,15 @@ LCSFactory::ComputeContactJacobian(
         plant,
         contact_geoms[i]);
 
-    if (num_direction_contacts_vector[i] == 1) {
-      Eigen::Vector3d planar_normal;
-      planar_normal << 0, 0, 1;
-      auto [phi_i, J_i] = collider.EvalPlanar(context, planar_normal);
-      auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
-      contact_points.push_back(p_WCa);
-      phi(i) = phi_i;
-      J_n.row(i) = J_i.row(0);
-      J_t.block(2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0), 0, 2 * num_direction_contacts_vector[i],
+    Eigen::Vector3d planar_normal(0, 0, 1);
+    auto [phi_i, J_i] = (num_direction_contacts_vector[i] == 1) ? collider.EvalPlanar(context, planar_normal): collider.EvalPolytope(context, num_direction_contacts_vector[i]);
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+    // TODO(yangwill): think about if we want to push back both witness points
+    contact_points.push_back(p_WCa);
+    phi(i) = phi_i;
+    J_n.row(i) = J_i.row(0);
+    J_t.block(2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0), 0, 2 * num_direction_contacts_vector[i],
                 n_v) = J_i.block(1, 0, 2 * num_direction_contacts_vector[i], n_v);
-
-    } else {
-      auto [phi_i, J_i] =
-          collider.EvalPolytope(context, num_direction_contacts_vector[i]);
-      auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
-      contact_points.push_back(p_WCa);
-      phi(i) = phi_i;
-      J_n.row(i) = J_i.row(0);
-      J_t.block(2 * std::accumulate(num_direction_contacts_vector.begin(),num_direction_contacts_vector.begin()+i,0), 0, 2 * num_direction_contacts_vector[i],
-                n_v) = J_i.block(1, 0, 2 * num_direction_contacts_vector[i], n_v);
-    }
-
     // J_i is 3 x n_v
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
@@ -609,36 +598,12 @@ void LCSFactory::PrintVerboseContactInfo(const MultibodyPlant<double>& plant,
             << p_world_contact_b.transpose() << "]" << std::endl;
 }
 
-bool LCSFactory::IsObjToObjContact(const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
-    drake::SortedPair<drake::geometry::GeometryId> contact_geoms) {
+bool LCSFactory::CheckIfPlanarContact(int i, const vector<int> resolve_PlanarContacts_vector) {
 
-  const auto& query_port =
-      plant.get_geometry_query_input_port();
-
-  const auto& query_object =
-    query_port.template Eval<drake::geometry::QueryObject<double>>(context);
-
-  const auto& inspector = query_object.inspector();
-
-  drake::geometry::FrameId frame_id_first =
-      inspector.GetFrameId(contact_geoms.first());
-
-
-  drake::geometry::FrameId frame_id_second =
-      inspector.GetFrameId(contact_geoms.second());
-
-
-  std::string frame_name_first = inspector.GetName(frame_id_first);
-
-  std::string frame_name_second = inspector.GetName(frame_id_second);
-
-
-  if (frame_name_first != "end_effector_simple::end_effector_simple" && frame_name_second != "end_effector_simple::end_effector_simple" && frame_name_first != "ground::ground" && frame_name_second != "ground::ground") {
+  if (resolve_PlanarContacts_vector[i]) {
     return true;
   }else {
     return false;
-
   }
 }
 
