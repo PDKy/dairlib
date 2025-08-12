@@ -382,8 +382,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   // Simulate the dynamics from the planned inputs.
   if (cost_type == C3CostComputationType::kSimLCS) {
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
@@ -395,10 +395,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
 
   // Use the C3 plan.
   else if (cost_type == C3CostComputationType::kUseC3Plan) {
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
-      XX[i] = zfin_[i].segment(0, n_);
-      if (i == N_-1) {
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
+      XX[i] = zfin_[i / resolution].segment(0, n_);
+      if (i == N_-1) { 
         if (lcs_for_cost_) {
           XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
         }
@@ -414,8 +414,8 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
-    for (int i = 0; i < N_*resolution; i++) {
-      UU[i] = zfin_[i].segment(n_ + m_, k_);
+    for (int i = 0; i < N_ * resolution; i++) {
+      UU[i] = zfin_[i / resolution].segment(n_ + m_, k_);
       if (lcs_for_cost_) {
         XX[i+1] = lcs_for_cost_->Simulate(XX[i], UU[i]);
       }
@@ -424,9 +424,9 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
       }
     }
     // Replace ee traj with those from zfin_.
-    for (int i = 0; i < N_*resolution; i++) {
-      XX[i].segment(0,3) = zfin_[i].segment(0,3);
-      if (i == N_*resolution-1) {
+    for (int i = 0; i < N_; i++) {
+      XX[i].segment(0,3) = zfin_[i / resolution].segment(0,3);
+      if (i == N_-1) {
         if (lcs_for_cost_) {
           XX[i+1].segment(0,3) = 
             lcs_for_cost_->Simulate(XX[i], UU[i]).segment(0,3);
@@ -736,20 +736,20 @@ C3Base::SimulatePDControl(
   }
 
   // Smooth XX and UU 
-  for (int i = 0; i < N_-1; i++) {
-    Eigen::VectorXd UU_start = UU[i * resolution];
-    Eigen::VectorXd UU_end = UU[(i+1) * resolution];
-    Eigen::VectorXd XX_start = XX[i * resolution];
-    Eigen::VectorXd XX_end = XX[(i+1) * resolution];    
+  // for (int i = 0; i < N_-1; i++) {
+  //   Eigen::VectorXd UU_start = UU[i * resolution];
+  //   Eigen::VectorXd UU_end = UU[(i+1) * resolution];
+  //   Eigen::VectorXd XX_start = XX[i * resolution];
+  //   Eigen::VectorXd XX_end = XX[(i+1) * resolution];    
 
-    Eigen::VectorXd UU_diff = UU_end - UU_start;
-    Eigen::VectorXd XX_diff = XX_end - XX_start;
+  //   Eigen::VectorXd UU_diff = UU_end - UU_start;
+  //   Eigen::VectorXd XX_diff = XX_end - XX_start;
 
-    for (int j = 0; j < resolution; j++) {
-      UU[i * resolution + j] = UU[i*resolution] + (j / resolution) * UU_diff;
-      XX[i * resolution + j] = XX[i*resolution] + (j / resolution) * XX_diff;
-    }
-  }
+  //   for (int j = 0; j < resolution; j++) {
+  //     UU[i * resolution + j] = UU[i*resolution] + (j / resolution) * UU_diff;
+  //     XX[i * resolution + j] = XX[i*resolution] + (j / resolution) * XX_diff;
+  //   }
+  // }
 
   // Set the PD gains for the emulated tracking controller.
   Eigen::VectorXd Kp_vector = Eigen::Map<Eigen::VectorXd>(Kp_for_ee_pd_rollout.data(), Kp_for_ee_pd_rollout.size());
@@ -937,6 +937,28 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   AddAugmentedCostsQPStep(G, WD);
 
   SetInitialGuessQPStep(x0, admm_iteration);
+
+  // for (const auto& binding : prog_.GetAllConstraints()) {
+  //     std::cout << "Constraint type: "
+  //               << binding.evaluator()->get_description() << "\n";
+  //     try {
+  //         // Try to cast to a LinearConstraint to get A, l, u
+  //         auto lc = dynamic_cast<const drake::solvers::LinearConstraint*>(
+  //             binding.evaluator().get());
+  //         if (lc) {
+  //             std::cout << "A =\n" << lc->GetDenseA() << "\n";
+  //             std::cout << "Lower bound = " << lc->lower_bound().transpose() << "\n";
+  //             std::cout << "Upper bound = " << lc->upper_bound().transpose() << "\n";
+  //         }
+  //     } catch (...) {
+  //         std::cout << "  (not a LinearConstraint)\n";
+  //     }
+
+  //     std::cout << "Variables: " << binding.variables() << "\n";
+  //     std::cout << "-----------------------------\n";
+  // }
+
+
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (result.is_success()) {

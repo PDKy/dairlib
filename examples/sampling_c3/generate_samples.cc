@@ -661,10 +661,13 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         for (int i = 0; i < num_objects; i++) {
             //std::cout << results[2 + 4*i].distance << std::endl;
             // Only compare with body_volume
-            if (results[2 + 4*i].distance <= sampling_params.sample_projection_clearance) {
+
+            for (int j = 2 + 13*i; j < 12 + 13*i; j++) { // Check each convex piece
+              if (results[j].distance <= sampling_params.sample_projection_clearance) {
                 in_collision = true;
                 break;
-            }
+              }
+            }            
         }
 
         if (!in_collision) {
@@ -700,9 +703,9 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
   double candidate_radius =
     sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
   if (candidate_state[0] < sampling_c3_options.workspace_limits[0][3] // x min
-   || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] // x max
-   || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] // y min
-   || candidate_state[1] > sampling_c3_options.workspace_limits[1][4] // y max
+   || candidate_state[0] > sampling_c3_options.workspace_limits[0][4] + sampling_c3_options.workspace_margins // x max
+   || candidate_state[1] < sampling_c3_options.workspace_limits[1][3] - sampling_c3_options.workspace_margins// y min
+   || candidate_state[1] > sampling_c3_options.workspace_limits[1][4]  + sampling_c3_options.workspace_margins// y max
    || candidate_state[2] < sampling_c3_options.workspace_limits[2][3] // z min
    || candidate_state[2] > sampling_c3_options.workspace_limits[2][4] // z max
    || candidate_radius > sampling_c3_options.robot_radius_limits[1]   // r min

@@ -461,7 +461,7 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormalMultiObject) {
     std::vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
-      std::string path = "examples/sampling_c3/urdf/" + base_name + ".obj";
+      std::string path = "examples/sampling_c3/urdf/" + base_name + "/" + base_name + ".obj";
       mesh_paths.push_back(path);
     }
     if (mesh_paths.empty()) {
@@ -783,6 +783,42 @@ auto c3_start = std::chrono::high_resolution_clock::now();
       test_c3_object = std::make_shared<C3Plus>(
         test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired, c3_options);
     } // Unknown projection types are rejected in the initialization.
+
+
+    if (!controller_params_.include_walls) {
+      // Set actor bounds.
+      for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+        Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+        A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+        test_c3_object->AddLinearConstraint(
+          A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+          c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
+      }
+      // Set object bounds
+      for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+        for (int j = 0; j < controller_params_.num_objects; j++) {
+          Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+          A.segment(7 + 7*j, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+          test_c3_object->AddLinearConstraint(
+            A, c3_options.workspace_limits[i][3] - sampling_c3_options_.workspace_margins, 
+            c3_options.workspace_limits[i][4] + sampling_c3_options_.workspace_margins, 1);
+        }
+      }
+    }
+    // Add force constraints
+    for (int i : vector<int>({0, 1})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_horizontal_limits[0], c3_options.u_horizontal_limits[1], 2);
+    }
+    for (int i : vector<int>({2})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+      A(i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+        A, c3_options.u_vertical_limits[0], c3_options.u_vertical_limits[1], 2);
+    }
+
 
     test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
 
@@ -1149,7 +1185,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
     drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
   float approx_loop_dt = std::min(0.1, filtered_solve_time_);
-  float nominal_accel = 1;
+  float nominal_accel = sampling_c3_options_.nominal_ee_accel;
   for (int i = 0; i < 3; i++) {
     x_lcs_curr[i] = std::clamp(
       x_pred_curr_plan_[i],
@@ -1378,6 +1414,10 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     } else {
       x_pred_curr_plan_ = knots.col(N_ - 1);
     }
+  }
+  for (int i = 0; i < N_; i++) {
+    knots(2, i) = sampling_params_.z_height; // keep ee height constant
+    knots(5 + 7 * controller_params_.num_objects, i) = 0; // keep ee z-velo constant
   }
 
   // Add end effector position target to LCM Trajectory.
