@@ -104,6 +104,15 @@ SamplingC3Controller::SamplingC3Controller(
   std::cout << "n_u_" << n_u_ << std::endl;
   std::cout << "n_x_" << n_x_ << std::endl;
 
+  std::cout << "size of g_lambda_" << sampling_c3_options_.g_lambda.size() << std::endl;
+  std::cout << "size of G" << sampling_c3_options_.G.size() << std::endl;
+
+  for (int i = 0; i < sampling_c3_options_.g_lambda.size(); ++i) {
+    std::cout << "g_lambda_: " << sampling_c3_options_.g_lambda[i] << std::endl;
+    std::cout << "size of g_lambda_" << sampling_c3_options_.g_lambda.size() << std::endl;
+
+  }
+
   if (verbose_) {
 
     std::cout << "Q Rows: " << Q_[0].rows() << std::endl;
@@ -117,16 +126,21 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
+
+  auto [num_planar_contacts, num_direction_contacts_vector] = LCSFactory::ProcessPlanarInformation(sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],
+                                                                                                    sampling_c3_options_.resolve_contacts_to_lists[sampling_c3_options_.num_contacts_index],
+                                                                                                    sampling_c3_options_.num_friction_directions);
+
   if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
     n_lambda_ =
         2 * sampling_c3_options_.num_contacts +
         2 * sampling_c3_options_.num_friction_directions *
-            sampling_c3_options_.num_contacts;
+            (sampling_c3_options_.num_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
   } else if (sampling_c3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
     n_lambda_ = 2 * sampling_c3_options_.num_friction_directions *
-                sampling_c3_options_.num_contacts;
+                (sampling_c3_options_.num_contacts - num_planar_contacts) + 2 * 1 * num_planar_contacts;
   } else {
     std::cerr << ("Unknown or unsupported contact model: " +
       sampling_c3_options_.contact_model) << std::endl;
@@ -1333,7 +1347,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     solvers::LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options.num_friction_directions, c3_options.mu, dt_, N_,
-      contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index]);
+      contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
     lcs_candidates.push_back(lcs_object_sample);
 
     // Create different LCS objects for cost calculation.
@@ -1347,7 +1361,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, plant_ad_, *context_ad_,
         resolved_contact_pairs_for_cost_simulation,
         sampling_c3_options_.num_friction_directions,
-        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index_for_cost]);
+        sampling_c3_options_.mu_for_cost, dt_cost_, N_ * sampling_c3_options_.lcs_dt_resolution, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index_for_cost],sampling_c3_options_.resolve_contacts_to);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -2121,7 +2135,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   // print size of resolved_contact_pairs
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
     plant_, *context_, resolved_contact_pairs,
-    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index]);
+    c3_options.num_friction_directions, c3_options.mu, contact_model_,sampling_c3_options_.resolve_PlanarContacts_to_lists[sampling_c3_options_.num_contacts_index],sampling_c3_options_.resolve_contacts_to);
 }
 
 // Output port handlers for best sample location

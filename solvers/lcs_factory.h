@@ -55,7 +55,7 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu, double dt,
-      int N, ContactModel = ContactModel::kStewartAndTrinkle,const vector<int> resolve_PlanarContacts_vector = {});
+      int N, ContactModel = ContactModel::kStewartAndTrinkle,const vector<int>& resolve_PlanarContacts_vector = {}, const std::vector<int>& resolve_contacts_to_list = {});
 
   static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
@@ -63,7 +63,7 @@ class LCSFactory {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
       int num_friction_directions, const std::vector<double>& mu,
-      ContactModel = ContactModel::kStewartAndTrinkle, const vector<int> resolve_PlanarContacts_vector = {});
+      ContactModel = ContactModel::kStewartAndTrinkle, const vector<int> resolve_PlanarContacts_vector = {},const std::vector<int>& resolve_contacts_to_list = {});
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but
@@ -75,6 +75,7 @@ class LCSFactory {
                           std::set<int> inactive_lambda_inds);
 
   static bool CheckIfPlanarContact(int i, const vector<int> resolve_PlanarContacts_vector = {});
+  static std::pair<int, vector<int>> ProcessPlanarInformation(const vector<int> resolve_PlanarContacts_vector, const std::vector<int>& resolve_contacts_to_list,int num_friction_directions);
 
   /// Optionally preprocess contact pairs to select the closest contacts
   /// @param plant The MultibodyPlant

@@ -379,6 +379,11 @@ struct SamplingC3Options : C3Options {
       options->g_lambda = g_lambda_list[num_contacts_index];
       options->g_u = g_u;
 
+      std::cout << "beforce change" << options->g_lambda.size()<< std::endl;
+      for (int i = 0; i < options->g_lambda.size(); ++i) {
+        std::cout << options->g_lambda[i] << std::endl;
+      }
+
       options->u_x = u_x;
       options->u_gamma = u_gamma_list[num_contacts_index];
       options->u_lambda_n = u_lambda_n_list[num_contacts_index];
@@ -397,6 +402,12 @@ struct SamplingC3Options : C3Options {
         options->u_eta = u_eta_list[num_contacts_index];
       }
       MakePlanarLambdaCost(options);
+
+
+      std::cout << "after change" << options->g_lambda.size()<< std::endl;
+      for (int i = 0; i < options->g_lambda.size(); ++i) {
+        std::cout << options->g_lambda[i] << std::endl;
+      }
       PopulateCostMatricesFromVectors(options);
     }
 
