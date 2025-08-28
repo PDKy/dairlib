@@ -1,5 +1,5 @@
 #include "sampling_based_c3_controller.h"
-
+#include <sstream>
 #include <ctime>
 #include <iostream>
 #include <thread>
@@ -834,7 +834,8 @@ auto c3_start = std::chrono::high_resolution_clock::now();
     // Solve C3, store resulting object and cost.
     test_c3_object->SetOsqpSolverOptions(solver_options_);
     test_c3_object->Solve(test_state, verbose_);
-
+   // std::cout << "desired x position" << x_lcs_des.value().segment(7,3) << std::endl;
+    //std::cout << "desired x pos" << x_lcs_des.value().segment(3,4) << std::endl;
     auto cc_start = std::chrono::high_resolution_clock::now();
     std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
       test_c3_object->CalcCost(
@@ -899,65 +900,161 @@ auto c3_start = std::chrono::high_resolution_clock::now();
   // Review the cost results to determine the best sample.
   bool force_c3_mode = radio_out->channel[12];
   double best_other_cost;
+  std::vector<double> test_vector;
   if (num_total_samples > 1) {
     std::vector<double> additional_sample_cost_vector = std::vector<double>(
       all_sample_costs_.begin() + 1, all_sample_costs_.end());
-    best_other_cost = *std::min_element(additional_sample_cost_vector.begin(),
-                                        additional_sample_cost_vector.end());
-    std::vector<double>::iterator it =
-      std::min_element(std::begin(additional_sample_cost_vector),
-                        std::end(additional_sample_cost_vector));
-    best_sample_index_ = (SampleIndex)(
-      std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+
+    const double eps = 0.05;
+    bool all_equal =
+        std::all_of(additional_sample_cost_vector.begin(),
+                    additional_sample_cost_vector.end(),
+                    [&](double x){ return std::abs(x - additional_sample_cost_vector.front()) <= eps; });
+
+    if (!all_equal) {
+      best_other_cost = *std::min_element(additional_sample_cost_vector.begin(),
+                                     additional_sample_cost_vector.end());
+      std::vector<double>::iterator it =
+        std::min_element(std::begin(additional_sample_cost_vector),
+                          std::end(additional_sample_cost_vector));
+      best_sample_index_ = (SampleIndex)(
+        std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+    }else {
+      std::cout << "all the same" << std::endl;
+      std::vector<double> norm_u_vector;
+      for (int j = 0; j < additional_sample_cost_vector.size(); j++) {
+        auto test_best_plan = c3_objects.at(j+1);
+        auto u_sol_test = test_best_plan->GetStateSolution();
+        double norm_u = 0.0;
+        for (int k = 0; k < N_; k++) {
+          norm_u += u_sol_test.at(k).segment(n_q_,9).norm();
+        }
+        norm_u_vector.push_back(norm_u);
+        //std::cout << "at sample i: " << j << "value of norm: " << norm_u << std::endl;
+      }
+      test_vector = norm_u_vector;
+      best_other_cost = additional_sample_cost_vector.at(1);
+      std::vector<double>::iterator it =
+        std::max_element(std::begin(norm_u_vector),
+                          std::end(norm_u_vector));
+      best_sample_index_ = (SampleIndex)(
+        std::distance(std::begin(norm_u_vector), it) + 1);
+    }
+
   } else {
     force_c3_mode = true;
   }
 
-  if (sampling_c3_options_.contact_filter) {
-    double norm_vel_position = 0;
-    double norm_vel_pos = 0;
-    int offset = 0;
-    do {
-      auto test_best_plan = c3_objects.at(best_sample_index_);
-      Eigen::MatrixXd x_real = test_best_plan->GetRealSolution();
-      MatrixXd vel_position = MatrixXd::Zero(3, N_);
-      vel_position.bottomRows(3) = x_real.middleRows(n_q_, 3).cast<double>();
-      //vel_position.bottomRows(3) = x_real.middleRows(n_q_ + 6, 3).cast<double>();
-      MatrixXd vel_pos = MatrixXd::Zero(3, N_);
-      vel_pos.topRows(3) = x_real.middleRows(n_q_ + 3, 3).cast<double>();
-      norm_vel_position = vel_position.colwise().norm().sum();
-      norm_vel_pos = (vel_pos.colwise().norm()).sum();
-      std::cout << "norm_vel_position = " << norm_vel_position << std::endl;
-      //std::cout << "norm_vel_pos = " << norm_vel_pos << std::endl;
-      // rechoose the best sample
-      if ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold)) {
-        std::cerr << "best_sample_index_ = " << best_sample_index_ << std::endl;
-        std::cout << "size of all sample cost before erase" << all_sample_costs_.size() << std::endl;
-
-        for (int j = 0; j < N_; j++) {
-          std::cout << "position of end-effector: " << x_real.col(j).segment(0 , 3).transpose() << std::endl;
-        }
-        all_sample_costs_.erase(all_sample_costs_.begin() + best_sample_index_);
-        c3_objects.erase(c3_objects.begin() + best_sample_index_);
-        std::cout << "size of all sample cost after erase" << all_sample_costs_.size() << std::endl;
-        std::cerr << "real select" << std::endl;
 
 
+  // if (sampling_c3_options_.contact_filter) {
+  //   double norm_vel_position = 0;
+  //   double norm_vel_pos = 0;
+  //   int offset = 0;
+  //   do {
+  //     auto test_best_plan = c3_objects.at(best_sample_index_);
+  //     Eigen::MatrixXd x_real = test_best_plan->GetRealSolution();
+  //     MatrixXd vel_position = MatrixXd::Zero(3, N_);
+  //     vel_position.bottomRows(3) = x_real.middleRows(n_q_, 3).cast<double>();
+  //     vel_position.bottomRows(3) = x_real.middleRows(n_q_ + 6, 3).cast<double>();
+  //     MatrixXd vel_pos = MatrixXd::Zero(3, N_);
+  //     vel_pos.topRows(3) = x_real.middleRows(n_q_ + 3, 3).cast<double>();
+  //     norm_vel_position = vel_position.colwise().norm().sum();
+  //     norm_vel_pos = (vel_pos.colwise().norm()).sum();
+  //     std::cout << "norm_vel_position = " << norm_vel_position << std::endl;
+  //     std::cout << "norm_vel_pos = " << norm_vel_pos << std::endl;
+  //     // rechoose the best sample
+  //     if ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold) && (norm_vel_pos < sampling_c3_options_.norm_vel_pos_threshold)) {
+  //       std::cerr << "best_sample_index_ = " << best_sample_index_ << std::endl;
+  //       std::cout << "size of all sample cost before erase" << all_sample_costs_.size() << std::endl;
+  //       for (int j = 0; j < N_; j++) {
+  //         std::cout << "position of object: " << x_real.col(j).segment(7 , 3).transpose() << std::endl;
+  //       }
+  //
+  //       for (int j = 0; j < N_; j++) {
+  //         std::cout << "ori. of object: " << x_real.col(j).segment(3 , 4).transpose() << std::endl;
+  //       }
+  //
+  //       all_sample_costs_.erase(all_sample_costs_.begin() + best_sample_index_);
+  //       c3_objects.erase(c3_objects.begin() + best_sample_index_);
+  //       std::cout << "size of all sample cost after erase" << all_sample_costs_.size() << std::endl;
+  //       std::cerr << "real select" << std::endl;
+  //
+  //
+  //
+  //       //AugmentSamplesWithBuffer(c3_objects);
+  //       std::vector<double> additional_sample_cost_vector = std::vector<double>(
+  //       all_sample_costs_.begin() + 1, all_sample_costs_.end());
+  //       //additional_sample_cost_vector.erase(additional_sample_cost_vector.begin() + best_sample_index_ - 1);
+  //       best_other_cost = *std::min_element(additional_sample_cost_vector.begin(),
+  //                                     additional_sample_cost_vector.end());
+  //       std::vector<double>::iterator it =
+  //         std::min_element(std::begin(additional_sample_cost_vector),
+  //                           std::end(additional_sample_cost_vector));
+  //       best_sample_index_ = (SampleIndex)(
+  //         std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+  //     }
+  //   } while ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold) && (norm_vel_pos < sampling_c3_options_.norm_vel_pos_threshold));
+  // }
 
-        //AugmentSamplesWithBuffer(c3_objects);
-        std::vector<double> additional_sample_cost_vector = std::vector<double>(
-        all_sample_costs_.begin() + 1, all_sample_costs_.end());
-        //additional_sample_cost_vector.erase(additional_sample_cost_vector.begin() + best_sample_index_ - 1);
-        best_other_cost = *std::min_element(additional_sample_cost_vector.begin(),
-                                      additional_sample_cost_vector.end());
-        std::vector<double>::iterator it =
-          std::min_element(std::begin(additional_sample_cost_vector),
-                            std::end(additional_sample_cost_vector));
-        best_sample_index_ = (SampleIndex)(
-          std::distance(std::begin(additional_sample_cost_vector), it) + 1);
-      }
-    } while ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold) && (norm_vel_pos < sampling_c3_options_.norm_vel_pos_threshold));
+
+if (sampling_c3_options_.contact_filter) {
+  std::vector<std::string> debug_out(num_total_samples);  // pre-size (thread-safe writes to unique i)
+
+  #pragma omp parallel for num_threads(num_threads_to_use_)
+  for (int i = 0; i < num_total_samples; ++i) {
+    std::ostringstream oss;
+    oss.setf(std::ios::fixed);
+    oss.precision(6);
+    const Eigen::IOFormat rowfmt(Eigen::StreamPrecision, 0, " ", " ", "", "", "", "");
+
+    double error = 0.0;
+
+    auto test_best_plan = c3_objects.at(i);
+    Eigen::MatrixXd x_real = test_best_plan->GetRealSolution();
+    const auto full_solution = test_best_plan->GetFullSolution();
+    oss << "best sample index = " << best_sample_index_ << '\n';
+    // Header
+    oss << "=== Sample " << i << " ===\n";
+    oss << "desired x position: " << x_lcs_des.value().segment(7,3).transpose().format(rowfmt) << '\n';
+    oss << "desired x ori (quat): " << x_lcs_des.value().segment(3,4).transpose().format(rowfmt) << '\n';
+    oss << "sample cost: " << all_sample_costs_.at(i) << '\n';
+
+    // Lambda/eta & error
+    for (int j = 0; j < N_; ++j) {
+      const auto& z = full_solution.at(j);
+      const auto lambda = z.segment(n_x_, n_lambda_);
+      const auto eta    = z.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
+      error += lambda.dot(eta);
+      oss << "  t=" << j
+          << "  lambda: " << lambda.transpose().format(rowfmt)
+          << " | eta: "   << eta.transpose().format(rowfmt) << '\n';
+    }
+    oss << "complementarity error sum: " << error << '\n';
+
+    // Object position
+    for (int j = 0; j < N_; ++j) {
+      oss << "  t=" << j << "  obj pos:  "
+          << x_real.col(j).segment(7,3).transpose().format(rowfmt) << '\n';
+    }
+
+    // Object orientation
+    for (int j = 0; j < N_; ++j) {
+      oss << "  t=" << j << "  obj quat: "
+          << x_real.col(j).segment(3,4).transpose().format(rowfmt) << '\n';
+    }
+
+    oss << '\n';
+    debug_out[i] = std::move(oss).str();  // store per-sample text
   }
+
+  // Print once, in order, no interleaving
+  for (int i = 0; i < num_total_samples; ++i) {
+    std::cout << debug_out[i];
+  }
+  std::cout.flush();
+}
+
 
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;

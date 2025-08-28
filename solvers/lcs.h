@@ -54,6 +54,10 @@ class LCS {
   const Eigen::VectorXd Simulate(const Eigen::VectorXd& x_init, 
                                  const  Eigen::VectorXd& input, 
                                  bool verbose = false);
+  const std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd> Simulate_debug(
+      const Eigen::VectorXd& x_init,
+      const Eigen::VectorXd& input,
+      bool verbose = false);
 
  public:
   std::vector<Eigen::MatrixXd> A_;

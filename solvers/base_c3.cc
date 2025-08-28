@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <iostream>
-
+#include <sstream>
 #include <Eigen/Core>
 #include <omp.h>
 
@@ -480,6 +480,17 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
                                          verbose);
   }
 
+  // for (int i = 0; i < N_*resolution; i++) {
+  //   std::cout <<"simulate result in simulate PD control at time step i :" <<i<<std::endl;
+  //   std::cout << "position" << std::endl;
+  //   std::cout << XX[i].segment(7 ,3) << std::endl;
+  // }
+
+  // for (int i = 0; i < N_*resolution; i++) {
+  //   std::cout <<"simulate result in simulate PD control at time step i :" <<i<<std::endl;
+  //   std::cout << "pos" << std::endl;
+  //   std::cout << XX[i].segment(3 ,4) << std::endl;
+  // }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
   std::vector<Eigen::MatrixXd> Q_eff = Q_;
@@ -509,6 +520,10 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   int obj_vel_index = 0;
 
   double cost_contrib_u = 0;
+
+  std::ostringstream dbg;
+  dbg.setf(std::ios::fixed);
+  dbg.precision(6);
 
   // Calculate the error and cost contributions for each state.
   for (int i = 0; i < N_*resolution; i+=resolution) {
@@ -704,6 +719,19 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3Base::CalcCost(
   //   std::cout << XX[j].transpose() << std::endl;
   // }
   // std::cout << "\n\n" << std::endl;
+
+//   for (int i = 0; i < N_ * resolution; ++i) {
+//     dbg << "simulate result in simulate PD control at time step i : " << i << '\n'
+//         << "position\n" << XX[i].segment(7, 3).transpose() << '\n'
+//         << "pos\n"      << XX[i].segment(3, 4).transpose() << "\n\n";
+//   }
+//
+// #pragma omp critical(io)
+//   {
+//     std::cout << dbg.str();
+//     std::cout.flush();
+//   }
+
   return ret;
 }
 
@@ -1047,8 +1075,15 @@ Eigen::MatrixXd C3Base::GetRealSolution() {
   Eigen::MatrixXd XX = Eigen::MatrixXd::Zero(n_, N_);
   XX.col(0) = x_sol_->at(0);
   for (int i = 0; i < N_-1; i++) {
-    XX.col(i+1) = lcs_.Simulate(XX.col(i), u_sol_->at(i));
+    auto [state, force, dis] = lcs_.Simulate_debug(XX.col(i), u_sol_->at(i));
+    XX.col(i+1) = state;
     //std::cout << "XX: " <<XX.col(i).segment(7,3) << "i: "<< i << std::endl;
+    //std::cout << "state at index of i: " << i << std::endl;
+    //std::cout << state << std::endl;
+    // std::cout << "force at index of i: " << i << std::endl;
+    // std::cout << force << std::endl;
+    // std::cout << "dis at index of i: " << i << std::endl;
+    // std::cout << dis << std::endl;
   }
   return XX;
 }

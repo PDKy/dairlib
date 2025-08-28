@@ -36,9 +36,9 @@ min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
 max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 
 # kFixed parameters.
-fixed_sample_locations: [[0.45, 0.270, 0.270],
+fixed_sample_locations: [[0.6, 0.4, 0.270],
                                                # sample 1
-[0.34, 0.455, 0.225]] # sample 2
+[0.6, 0.4, 0.225]] # sample 2
 
 # kRandomOnPerimeter parameters.
 grid_x_limits: [-0.11, 0.11]
