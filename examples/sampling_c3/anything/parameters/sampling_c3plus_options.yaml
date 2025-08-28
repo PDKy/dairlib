@@ -14,12 +14,16 @@ publish_frequency: 0
 penalize_changes_in_u_across_solves: true  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 
-N: 10
+N: 5
 gamma: 1.0  # discount factor on MPC costs
 
 # As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1
+
+contact_filter: true
+norm_vel_position_threshold: 0.35
+norm_vel_pos_threshold: 0.04
 
 ### Limits
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
@@ -56,7 +60,7 @@ resolve_as_planar_contacts_list: [0, 0, 0, 0]
 # 0: not add the constraint
 # 1: add the constraint
 # prog_.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),lambda_/eta);
-add_nonnegative_constraints_on_lambdaeta_list: [0, 0, 0, 0]
+add_nonnegative_constraints_on_lambdaeta_list: [0, 1, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0

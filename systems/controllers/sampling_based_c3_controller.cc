@@ -913,6 +913,52 @@ auto c3_start = std::chrono::high_resolution_clock::now();
     force_c3_mode = true;
   }
 
+  if (sampling_c3_options_.contact_filter) {
+    double norm_vel_position = 0;
+    double norm_vel_pos = 0;
+    int offset = 0;
+    do {
+      auto test_best_plan = c3_objects.at(best_sample_index_);
+      Eigen::MatrixXd x_real = test_best_plan->GetRealSolution();
+      MatrixXd vel_position = MatrixXd::Zero(3, N_);
+      vel_position.bottomRows(3) = x_real.middleRows(n_q_, 3).cast<double>();
+      //vel_position.bottomRows(3) = x_real.middleRows(n_q_ + 6, 3).cast<double>();
+      MatrixXd vel_pos = MatrixXd::Zero(3, N_);
+      vel_pos.topRows(3) = x_real.middleRows(n_q_ + 3, 3).cast<double>();
+      norm_vel_position = vel_position.colwise().norm().sum();
+      norm_vel_pos = (vel_pos.colwise().norm()).sum();
+      std::cout << "norm_vel_position = " << norm_vel_position << std::endl;
+      //std::cout << "norm_vel_pos = " << norm_vel_pos << std::endl;
+      // rechoose the best sample
+      if ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold)) {
+        std::cerr << "best_sample_index_ = " << best_sample_index_ << std::endl;
+        std::cout << "size of all sample cost before erase" << all_sample_costs_.size() << std::endl;
+
+        for (int j = 0; j < N_; j++) {
+          std::cout << "position of end-effector: " << x_real.col(j).segment(0 , 3).transpose() << std::endl;
+        }
+        all_sample_costs_.erase(all_sample_costs_.begin() + best_sample_index_);
+        c3_objects.erase(c3_objects.begin() + best_sample_index_);
+        std::cout << "size of all sample cost after erase" << all_sample_costs_.size() << std::endl;
+        std::cerr << "real select" << std::endl;
+
+
+
+        //AugmentSamplesWithBuffer(c3_objects);
+        std::vector<double> additional_sample_cost_vector = std::vector<double>(
+        all_sample_costs_.begin() + 1, all_sample_costs_.end());
+        //additional_sample_cost_vector.erase(additional_sample_cost_vector.begin() + best_sample_index_ - 1);
+        best_other_cost = *std::min_element(additional_sample_cost_vector.begin(),
+                                      additional_sample_cost_vector.end());
+        std::vector<double>::iterator it =
+          std::min_element(std::begin(additional_sample_cost_vector),
+                            std::end(additional_sample_cost_vector));
+        best_sample_index_ = (SampleIndex)(
+          std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+      }
+    } while ((norm_vel_position < sampling_c3_options_.norm_vel_position_threshold) && (norm_vel_pos < sampling_c3_options_.norm_vel_pos_threshold));
+  }
+
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
     for (int i = 0; i < num_total_samples; i++) {
@@ -2297,11 +2343,14 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
       z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
+  // Get the real solution of C3 best plan
+  Eigen::MatrixXd x_real = c3_best_plan_->GetRealSolution();
+
   std::vector<LcmTrajectory::Trajectory> object_trajs;
   for (int i = 0; i < controller_params_.num_objects; i++) {
     MatrixXd knot = MatrixXd::Zero(6, N_);
-    knot.topRows(3) = c3_solution->x_sol_.middleRows(7*i + 7, 3).cast<double>();
-    knot.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
+    knot.topRows(3) = x_real.middleRows(7*i + 7, 3).cast<double>();
+    knot.bottomRows(3) = x_real.middleRows(n_q_ + 6*i + 6, 3).cast<double>();
     LcmTrajectory::Trajectory object_traj;
     object_traj.traj_name = "object_position_target_" + std::to_string(i);
     object_traj.datatypes = std::vector<std::string>(knot.rows(), "double");
@@ -2324,7 +2373,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
     // first 3 rows are rpy, last 3 rows are angular velocity
     MatrixXd orientation_sample = MatrixXd::Zero(4, N_);
     orientation_sample =
-      c3_solution->x_sol_.middleRows(3 + 7*i, 4).cast<double>();
+      x_real.middleRows(3 + 7*i, 4).cast<double>();
 
     object_orientation_traj.traj_name = "object_orientation_target_" + std::to_string(i);
     object_orientation_traj.datatypes =

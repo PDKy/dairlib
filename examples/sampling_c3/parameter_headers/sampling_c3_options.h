@@ -17,6 +17,7 @@ struct SamplingC3Options : C3Options {
   bool use_predicted_x0_c3;
   bool use_predicted_x0_repos;
   bool use_predicted_x0_reset_mechanism;  // Resets if prediction is too far.
+  bool contact_filter;
 
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
@@ -46,6 +47,8 @@ struct SamplingC3Options : C3Options {
   double dt_cost;
   double nominal_ee_accel;
 
+  double norm_vel_position_threshold;
+  double norm_vel_pos_threshold;
   /// Cost parameters.
   bool use_quaternion_dependent_cost;
   double q_quaternion_dependent_weight;
@@ -122,6 +125,9 @@ struct SamplingC3Options : C3Options {
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
     a->Visit(DRAKE_NVP(use_predicted_x0_repos));
     a->Visit(DRAKE_NVP(use_predicted_x0_reset_mechanism));
+    a->Visit(DRAKE_NVP(contact_filter));
+    a->Visit(DRAKE_NVP(norm_vel_position_threshold));
+    a->Visit(DRAKE_NVP(norm_vel_pos_threshold));
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));

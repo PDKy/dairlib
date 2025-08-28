@@ -1043,5 +1043,15 @@ void C3Base::RemoveUserConstraints() {
   user_constraints_.clear();
 }
 
+Eigen::MatrixXd C3Base::GetRealSolution() {
+  Eigen::MatrixXd XX = Eigen::MatrixXd::Zero(n_, N_);
+  XX.col(0) = x_sol_->at(0);
+  for (int i = 0; i < N_-1; i++) {
+    XX.col(i+1) = lcs_.Simulate(XX.col(i), u_sol_->at(i));
+    //std::cout << "XX: " <<XX.col(i).segment(7,3) << "i: "<< i << std::endl;
+  }
+  return XX;
+}
+
 }  // namespace solvers
 }  // namespace dairlib

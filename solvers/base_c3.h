@@ -148,6 +148,8 @@ class C3Base {
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
+  Eigen::MatrixXd GetRealSolution();
+
   int GetZSize() { return z_size_; }
 
   void UpdateCostMatrices(const C3Base::CostMatrices& costs);
